@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nano Banana PRO - AI 图像生成</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    },
+                    colors: {
+                        linear: {
+                            bg: '#0f1115',
+                            panel: '#181a1f',
+                            border: 'rgba(255,255,255,0.08)',
+                        }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out forwards',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        .dot-pattern {
+            background-image: radial-gradient(#eab308 1px, transparent 1px);
+            background-size: 24px 24px;
+            opacity: 0.15;
+            mask-image: linear-gradient(to top right, black, transparent 70%);
+        }
+
+        .glass-panel {
+            background: rgba(24, 26, 31, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* 优化 Select 下拉框样式 */
+        select {
+            background-image: none !important; /* 移除默认箭头，使用自定义图标 */
+        }
+        select option {
+            background-color: #181a1f;
+            color: #ffffff;
+            padding: 12px;
+        }
+    </style>
+</head>
+<body class="bg-linear-bg text-gray-200 font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- Background Pattern -->
+    <div class="fixed bottom-0 left-0 w-1/2 h-1/2 dot-pattern pointer-events-none z-0"></div>
+
+    <!-- Navigation -->
+    <nav class="w-full border-b border-linear-border bg-linear-bg/80 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex justify-between items-center">
+            <!-- Logo -->
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-gradient-to-br from-yellow-400 to-orange-600 rounded-lg flex items-center justify-center shadow-lg shadow-orange-500/20">
+                    <i class="fa-solid fa-bolt text-white text-sm"></i>
+                </div>
+                <span class="font-bold text-lg tracking-tight">Nano Banana <span class="text-xs align-top opacity-60 font-normal border border-gray-700 rounded px-1 ml-1">PRO</span></span>
+            </div>
+
+            <!-- Links -->
+            <div class="flex items-center gap-6 mr-10">
+                <a href="https://m.tb.cn/h.7dIpU7i?tk=8yqWfFIMjKU" target="_blank" class="text-sm font-medium text-gray-400 hover:text-white transition-colors hover:underline decoration-purple-500 underline-offset-4">API购买</a>
+                <a href="https://gemini.google.com/app" target="_blank" class="text-sm font-medium text-gray-400 hover:text-white transition-colors hover:underline decoration-yellow-500 underline-offset-4">Gemini官网</a>
+                <a href="https://kyjl97.github.io/CloudFlare-ImgBed/" target="_blank" class="text-sm font-medium text-gray-400 hover:text-white transition-colors hover:underline decoration-blue-500 underline-offset-4">博客</a>
+                <a href="kyjl97.github.io" target="_blank" class="text-sm font-medium text-gray-400 hover:text-white transition-colors hover:underline decoration-green-500 underline-offset-4">主页</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 z-10 relative">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full">
+
+            <!-- Left Column: Input Panel -->
+            <div class="lg:col-span-5 flex flex-col gap-6 animate-fade-in">
+
+                <!-- API Key Section -->
+                <div class="glass-panel rounded-xl p-6 shadow-xl shadow-black/20">
+                    <div class="flex items-center gap-2 mb-4 text-sm font-semibold text-gray-200">
+                        <i class="fa-solid fa-key text-yellow-500"></i>
+                        访问凭证 (Key)
+                    </div>
+                    <div class="relative group flex items-center">
+                        <input type="password" id="api-key" placeholder="请输入您的 API Key..."
+                            class="w-full bg-black/30 border border-white/10 rounded-lg pl-4 pr-20 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500 transition-all placeholder-gray-400">
+
+                        <!-- 保存按钮 -->
+                        <button id="save-key-btn" class="absolute right-2 top-1.5 bottom-1.5 bg-white/5 hover:bg-yellow-500/20 text-gray-400 hover:text-yellow-500 border border-white/10 rounded px-3 text-xs font-medium transition-colors flex items-center gap-2">
+                            <i class="fa-solid fa-floppy-disk"></i>
+                            <span>保存</span>
+                        </button>
+                    </div>
+                    <div class="mt-3 text-xs text-gray-400 bg-yellow-500/5 border border-yellow-500/10 rounded-md p-3 flex items-start gap-2">
+                        <i class="fa-solid fa-circle-info mt-0.5 text-yellow-500"></i>
+                        <span>采用异步 ID 轮询模式。通过 GitHub 联系 <strong class="text-yellow-400">kyjl97</strong> 购买。</span>
+                    </div>
+                </div>
+
+                <!-- Input Configuration -->
+                <div class="flex flex-col gap-6">
+                    <!-- Header -->
+                    <div class="flex items-center gap-2 text-xl font-bold">
+                        <i class="fa-solid fa-bolt text-yellow-500"></i>
+                        <h2>输入</h2>
+                    </div>
+
+                    <!-- Settings Row (Updated per screenshot) -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- 画幅比例 -->
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1.5 ml-1">画幅比例</label>
+                            <div class="relative">
+                                <select id="ratio-select" class="w-full appearance-none bg-black/30 border border-white/15 rounded-lg px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-yellow-500 transition-colors cursor-pointer hover:bg-white/5 text-white">
+                                    <option value="Auto">Auto</option>
+                                    <option value="1:1" selected>1:1</option>
+                                    <option value="16:9">16:9</option>
+                                    <option value="9:16">9:16</option>
+                                    <option value="4:3">4:3</option>
+                                    <option value="3:4">3:4</option>
+                                    <option value="3:2">3:2</option>
+                                    <option value="2:3">2:3</option>
+                                    <option value="5:4">5:4</option>
+                                    <option value="4:5">4:5</option>
+                                    <option value="21:9">21:9</option>
+                                </select>
+                                <i class="fa-solid fa-chevron-down absolute right-4 top-3.5 text-xs text-gray-500 pointer-events-none"></i>
+                            </div>
+                        </div>
+
+                        <!-- 分辨率 -->
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1.5 ml-1">分辨率</label>
+                            <div class="relative">
+                                <select id="quality-select" class="w-full appearance-none bg-black/30 border border-white/15 rounded-lg px-4 py-2.5 text-sm font-medium focus:outline-none focus:border-yellow-500 transition-colors cursor-pointer hover:bg-white/5 text-white">
+                                    <option value="1K">1K 标准</option>
+                                    <option value="2K">2K 高清</option>
+                                    <option value="4K">4K 超清</option>
+                                </select>
+                                <i class="fa-solid fa-sliders absolute right-4 top-3.5 text-xs text-gray-500 pointer-events-none"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Prompt Section -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-2">创意描述 (Prompt)</label>
+                        <div class="relative">
+                            <textarea id="prompt-input" rows="5"
+                            class="w-full bg-transparent border border-white/15 rounded-xl p-4 text-base font-mono leading-relaxed focus:outline-none focus:border-yellow-500 focus:ring-1 focus:ring-yellow-500 transition-all resize-none placeholder-gray-600"
+                            placeholder="描述你想生成的画面细节...">A futuristic city with flying cars, neon lights, cyberpunk style</textarea>
+                            <div class="absolute bottom-3 right-3 text-xs text-gray-600 border border-gray-700 rounded px-1.5 py-0.5">EN</div>
+                        </div>
+                    </div>
+
+                    <!-- Reference Image Section -->
+                    <div>
+                        <div class="mb-2">
+                            <label class="block text-sm font-medium text-gray-400">图片参考 (图生图)</label>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <!-- Slot 1 (主要参考图) -->
+                            <div id="ref-slot-1" class="border border-dashed border-white/20 rounded-xl h-32 relative overflow-hidden flex flex-col items-center justify-center cursor-pointer hover:border-yellow-500/50 hover:bg-yellow-500/5 transition-all group">
+                                <input type="file" id="ref-file-input" class="hidden" accept="image/*">
+                                <div id="ref-slot-1-content" class="flex flex-col items-center pointer-events-none">
+                                    <i class="fa-solid fa-cloud-arrow-up text-xl text-gray-400 group-hover:text-yellow-500 mb-2 transition-colors"></i>
+                                    <span class="text-xs text-gray-500">上传图片</span>
+                                </div>
+                                <img id="ref-slot-1-img" src="" class="absolute inset-0 w-full h-full object-cover hidden pointer-events-none">
+                            </div>
+
+                            <!-- Slot 2 (装饰/备用) -->
+                            <div id="ref-slot-2" class="border border-dashed border-white/20 rounded-xl h-32 relative overflow-hidden flex flex-col items-center justify-center cursor-pointer hover:border-yellow-500/50 hover:bg-yellow-500/5 transition-all group">
+                                <input type="file" id="ref-file-input-2" class="hidden" accept="image/*">
+                                <div id="ref-slot-2-content" class="flex flex-col items-center pointer-events-none">
+                                    <i class="fa-solid fa-cloud-arrow-up text-xl text-gray-400 group-hover:text-yellow-500 mb-2 transition-colors"></i>
+                                    <span class="text-xs text-gray-500">第二张图片</span>
+                                    <span class="text-[10px] text-gray-600">(可选)</span>
+                                </div>
+                                <img id="ref-slot-2-img" src="" class="absolute inset-0 w-full h-full object-cover hidden pointer-events-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Run Button -->
+                    <button id="run-btn" class="w-full bg-white text-black hover:bg-gray-200 font-bold py-4 rounded-xl shadow-lg shadow-white/5 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group">
+                        <span id="btn-text">立即生成</span>
+                        <i id="btn-icon" class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                        <div id="btn-loader" class="hidden animate-spin h-5 w-5 border-2 border-black border-t-transparent rounded-full"></div>
+                    </button>
+
+                </div>
+            </div>
+
+            <!-- Right Column: Result Panel -->
+            <div class="lg:col-span-7 flex flex-col gap-6 animate-fade-in" style="animation-delay: 0.1s;">
+                <!-- Header -->
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2 text-xl font-bold">
+                        <i class="fa-regular fa-image text-gray-400"></i>
+                        <h2>结果</h2>
+                    </div>
+                    <div class="flex gap-2">
+                        <!-- Use as Input Button -->
+                        <button id="use-input-btn" class="px-3 py-1.5 text-xs font-medium border border-white/10 rounded-lg hover:bg-white/5 transition-colors flex items-center gap-1.5 group">
+                            <i class="fa-solid fa-arrow-rotate-left group-active:-rotate-90 transition-transform"></i> 用作输入
+                        </button>
+                        <!-- Download Button -->
+                        <button id="download-btn" class="px-3 py-1.5 text-xs font-medium border border-white/10 rounded-lg hover:bg-white/5 transition-colors flex items-center gap-1.5">
+                            <i class="fa-solid fa-download"></i> 下载
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Image Display Area -->
+                <div class="relative w-full aspect-square rounded-2xl overflow-hidden border border-white/10 bg-black/20 shadow-2xl">
+                    <img id="default-result-img" src="https://vibepicture.com/texttoimg.png" class="absolute inset-0 w-full h-full object-cover z-0">
+                    <img id="result-image" src="" alt="Generated Result" class="absolute inset-0 w-full h-full object-cover hidden transition-opacity duration-700 opacity-0 z-20">
+                    <div id="loading-overlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center z-30 hidden">
+                        <div id="loading-text" class="text-yellow-500 mb-2 font-mono text-sm">正在请求云端...</div>
+                        <div class="w-48 h-1 bg-gray-700 rounded-full overflow-hidden">
+                            <div class="h-full bg-yellow-500 animate-[width_2s_ease-in-out_infinite]" style="width: 30%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-linear-bg text-white border-t border-white/10 py-12 mt-12 font-mono">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div class="lg:col-span-4 lg:col-start-1">
+                <h3 class="text-white font-bold mb-4 tracking-wider"><span class="text-green-500 mr-2">&gt;</span> NANO BANANA</h3>
+                <p class="text-gray-500 text-sm leading-relaxed font-sans">Willing to make dreams come true</p>
+            </div>
+            <div class="lg:col-span-4 lg:col-start-5 flex flex-col items-center">
+                <div class="text-left w-full md:w-auto">
+                    <h3 class="text-green-500 font-bold mb-4 tracking-wider"><span class="mr-2">&gt;</span> NAVIGATION</h3>
+                    <ul class="space-y-3 text-sm text-gray-500 font-sans">
+                        <li><a href="https://jieliu.me" target="_blank" class="hover:text-white transition-colors">Features</a></li>
+                        <li><a href="https://jieliu.me/" target="_blank" class="hover:text-white transition-colors">Pricing</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="lg:col-span-4 lg:col-start-9 flex flex-col lg:items-end lg:pr-24">
+                <h3 class="text-green-500 font-bold mb-4 tracking-wider"><span class="mr-2">&gt;</span> CONNECT</h3>
+                <div class="flex gap-5 items-center">
+                    <a href="https://github.com/kyjl97" target="_blank" class="text-gray-500 hover:text-white transition-colors text-xl"><i class="fab fa-github"></i></a>
+                    <a href="#" id="wechat-public-trigger" class="text-gray-500 hover:text-green-400 transition-colors text-xl"><i class="fab fa-weixin"></i></a>
+                    <a href="#" id="donation-btn" class="text-gray-500 hover:text-yellow-400 transition-colors text-xl"><i class="fas fa-hand-holding-heart"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modals -->
+    <div id="donation-modal" class="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="bg-linear-panel border border-white/10 rounded-xl shadow-2xl w-full max-w-xs p-6 text-center">
+            <h3 class="text-lg font-semibold text-white mb-4">感谢您的支持！</h3>
+            <div class="flex border border-white/10 rounded-lg overflow-hidden mb-5">
+                <button id="wechat-tab" class="flex-1 p-2 text-sm font-semibold border-r border-white/10 bg-yellow-500/10 text-yellow-400 transition-colors"><i class="fab fa-weixin mr-1"></i> 微信</button>
+                <button id="alipay-tab" class="flex-1 p-2 text-sm font-semibold text-gray-400 hover:bg-white/5 transition-colors"><i class="fab fa-alipay mr-1"></i> 支付宝</button>
+            </div>
+            <div class="p-2 border border-white/10 rounded-lg bg-white/5">
+                 <img id="qr-code-img" src="https://raw.githubusercontent.com/kyjl97/kyjl97/main/assets/logo.png" class="w-48 h-48 mx-auto object-contain">
+            </div>
+            <button id="close-modal-btn" class="mt-6 w-full bg-white/5 hover:bg-white/10 text-gray-200 font-semibold px-4 py-2 rounded-lg transition-colors border border-white/10">关闭</button>
+        </div>
+    </div>
+
+    <div id="generic-qr-modal" class="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="bg-linear-panel border border-white/10 rounded-xl shadow-2xl w-full max-w-xs p-6 text-center">
+            <h3 id="generic-modal-title" class="text-lg font-semibold text-white mb-4"></h3>
+            <div class="p-2 border border-white/10 rounded-lg bg-white/5">
+                 <img id="generic-modal-qr-img" src="" class="w-48 h-48 mx-auto object-contain">
+            </div>
+            <p id="generic-modal-desc" class="text-sm text-gray-400 mt-4"></p>
+            <button id="close-generic-modal-btn" class="mt-6 w-full bg-white/5 hover:bg-white/10 text-gray-200 font-semibold px-4 py-2 rounded-lg transition-colors border border-white/10">关闭</button>
+        </div>
+    </div>
+
+    <!-- Logic Script -->
+    <script>
+        // --- Elements ---
+        const runBtn = document.getElementById('run-btn');
+        const apiKeyInput = document.getElementById('api-key');
+        const saveKeyBtn = document.getElementById('save-key-btn');
+        const btnText = document.getElementById('btn-text');
+        const btnIcon = document.getElementById('btn-icon');
+        const btnLoader = document.getElementById('btn-loader');
+
+        const resultImage = document.getElementById('result-image');
+        const defaultResultImg = document.getElementById('default-result-img');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const loadingText = document.getElementById('loading-text');
+
+        const useInputBtn = document.getElementById('use-input-btn');
+        const downloadBtn = document.getElementById('download-btn');
+
+        // Settings
+        const ratioSelect = document.getElementById('ratio-select');
+        const qualitySelect = document.getElementById('quality-select');
+        const promptInput = document.getElementById('prompt-input');
+
+        // Upload Elements
+        const refSlot1 = document.getElementById('ref-slot-1');
+        const refFileInput = document.getElementById('ref-file-input');
+        const refSlot1Img = document.getElementById('ref-slot-1-img');
+        const refSlot1Content = document.getElementById('ref-slot-1-content');
+
+        const refSlot2 = document.getElementById('ref-slot-2');
+        const refFileInput2 = document.getElementById('ref-file-input-2');
+        const refSlot2Img = document.getElementById('ref-slot-2-img');
+        const refSlot2Content = document.getElementById('ref-slot-2-content');
+
+        // --- Logic: API Key Save/Load ---
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedKey = localStorage.getItem('nano_banana_api_key');
+            if (savedKey) {
+                apiKeyInput.value = savedKey;
+                saveKeyBtn.innerHTML = '<i class="fa-solid fa-check"></i><span>已存</span>';
+                saveKeyBtn.classList.add('text-green-500', 'bg-green-500/10');
+            }
+        });
+
+        saveKeyBtn.addEventListener('click', () => {
+            const key = apiKeyInput.value.trim();
+            if (key) {
+                localStorage.setItem('nano_banana_api_key', key);
+                saveKeyBtn.innerHTML = '<i class="fa-solid fa-check"></i><span>已保存</span>';
+                saveKeyBtn.classList.add('text-green-500', 'bg-green-500/10');
+                setTimeout(() => {
+                    saveKeyBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i><span>保存</span>';
+                    saveKeyBtn.classList.remove('text-green-500', 'bg-green-500/10');
+                }, 2000);
+            } else {
+                alert("请输入 API Key 后再点击保存。");
+            }
+        });
+
+        // --- Logic: Image Upload ---
+        refSlot1.addEventListener('click', () => { refFileInput.click(); });
+        refFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    refSlot1Img.src = event.target.result;
+                    refSlot1Img.classList.remove('hidden');
+                    refSlot1Content.classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        refSlot2.addEventListener('click', () => { refFileInput2.click(); });
+        refFileInput2.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    refSlot2Img.src = event.target.result;
+                    refSlot2Img.classList.remove('hidden');
+                    refSlot2Content.classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        useInputBtn.addEventListener('click', () => {
+            let sourceSrc = "";
+            if (!resultImage.classList.contains('hidden') && resultImage.src) {
+                sourceSrc = resultImage.src;
+            } else {
+                sourceSrc = defaultResultImg.src;
+            }
+            refSlot1Img.src = sourceSrc;
+            refSlot1Img.classList.remove('hidden');
+            refSlot1Content.classList.add('hidden');
+            const icon = useInputBtn.querySelector('i');
+            icon.classList.add('rotate-[-90deg]');
+            setTimeout(() => icon.classList.remove('rotate-[-90deg]'), 300);
+        });
+
+        downloadBtn.addEventListener('click', async () => {
+            let src = "";
+            let filename = "nano-banana-result.png";
+
+            if (!resultImage.classList.contains('hidden') && resultImage.src) {
+                src = resultImage.src;
+            } else {
+                src = defaultResultImg.src;
+            }
+
+            if (!src) return;
+
+            try {
+                const response = await fetch(src);
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } catch (error) {
+                const a = document.createElement('a');
+                a.href = src;
+                a.target = '_blank';
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+        });
+
+        // --- Logic: Async API Generation ---
+        runBtn.addEventListener('click', async () => {
+            const key = apiKeyInput.value.trim();
+            const originalPrompt = promptInput.value.trim();
+            const ratio = ratioSelect.value;
+            const quality = qualitySelect.value;
+
+            if (!key) {
+                alert("请输入 API Key 才能继续。");
+                apiKeyInput.focus();
+                return;
+            }
+            if (!originalPrompt) {
+                alert("请输入提示词 (Prompt)。");
+                promptInput.focus();
+                return;
+            }
+
+            startLoading("正在提交任务...");
+
+            // 优化 Prompt：根据选择的画质增强提示词
+            let enhancedPrompt = originalPrompt;
+            if (quality === '4K') {
+                enhancedPrompt += ", 4k resolution, ultra detailed, masterpiece, best quality";
+            } else if (quality === '2K') {
+                enhancedPrompt += ", 2k resolution, high detailed, high quality";
+            }
+            // 1K 不做额外添加
+
+            try {
+                // Phase 1: 提交任务
+                const submitUrl = "https://grsai.dakka.com.cn/v1/draw/nano-banana";
+                const requestBody = {
+                    prompt: enhancedPrompt,
+                    aspect_ratio: ratio === 'Auto' ? '1:1' : ratio, // Auto 默认为 1:1
+                    model: "nano-banana",
+                    stream: false
+                };
+
+                if (!refSlot1Img.classList.contains('hidden') && refSlot1Img.src) {
+                    requestBody.image = refSlot1Img.src;
+                }
+
+                console.log("提交任务:", requestBody);
+
+                const response = await fetch(submitUrl, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${key}`
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`提交失败: ${response.status}`);
+                }
+
+                const rawText = await response.text();
+                console.log("Response Raw:", rawText);
+
+                let taskId = null;
+
+                try {
+                    const json = JSON.parse(rawText.replace(/^data:\s*/, ''));
+                    // 检查余额不足
+                    if (json.msg === "insufficient credits" || json.code === -1) {
+                        alert("API 错误: 余额不足 (Insufficient Credits)。\n请充值您的 API Key 额度后重试。");
+                        finishLoading(false);
+                        return;
+                    }
+                    if (json.msg && json.msg !== "success") {
+                        alert("API 返回错误: " + json.msg);
+                        finishLoading(false);
+                        return;
+                    }
+
+                    taskId = json.id || (json.data && json.data.id);
+                } catch (e) {
+                    // Ignore JSON parse error
+                }
+
+                // 正则提取 ID
+                if (!taskId) {
+                    const idMatch = rawText.match(/"?id"?\s*:\s*"?([^",}\s]+)"?/);
+                    if (idMatch && idMatch[1]) {
+                        taskId = idMatch[1];
+                    }
+                }
+
+                if (!taskId) {
+                    alert("出错: 未能获取任务 ID。\n\n服务器返回:\n" + rawText.slice(0, 500));
+                    finishLoading(false);
+                    return;
+                }
+
+                console.log("成功获取 Task ID:", taskId);
+
+                // Phase 2: 轮询结果
+                await pollForResult(taskId, key);
+
+            } catch (error) {
+                console.error("Error:", error);
+                alert("出错: " + error.message);
+                finishLoading(false);
+            }
+        });
+
+        // 轮询函数
+        async function pollForResult(taskId, key) {
+            const resultUrl = "https://grsai.dakka.com.cn/v1/draw/result";
+            let attempts = 0;
+            const maxAttempts = 60; // 最多轮询 60 次
+
+            const check = async () => {
+                loadingText.textContent = `云端生成中... (${attempts}s)`;
+                attempts++;
+
+                if (attempts > maxAttempts) {
+                    throw new Error("生成超时，请稍后重试。");
+                }
+
+                try {
+                    const response = await fetch(resultUrl, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${key}`
+                        },
+                        body: JSON.stringify({ id: taskId })
+                    });
+
+                    const json = await response.json();
+                    console.log("轮询状态:", json);
+
+                    const resultData = json.data || json;
+                    const status = resultData.status;
+
+                    if (status === 'succeeded') {
+                        // 提取 URL
+                        const url = resultData.results && resultData.results[0] ? resultData.results[0].url : null;
+                        if (url) {
+                            resultImage.src = url;
+                            finishLoading(true);
+                            return;
+                        }
+                    } else if (status === 'failed') {
+                        throw new Error(`任务失败: ${resultData.failure_reason || '未知原因'}`);
+                    }
+
+                    // 继续轮询
+                    setTimeout(check, 2000);
+
+                } catch (err) {
+                    console.warn("轮询出错:", err);
+                    setTimeout(check, 2000);
+                }
+            };
+
+            check();
+        }
+
+        function startLoading(text = "云端渲染中...") {
+            runBtn.disabled = true;
+            runBtn.classList.add('opacity-75', 'cursor-not-allowed');
+            btnText.textContent = "处理中";
+            btnIcon.classList.add('hidden');
+            btnLoader.classList.remove('hidden');
+            resultImage.classList.add('hidden');
+            resultImage.classList.remove('opacity-100');
+            loadingOverlay.classList.remove('hidden');
+            loadingText.textContent = text;
+        }
+
+        function finishLoading(success) {
+            runBtn.disabled = false;
+            runBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+            btnText.textContent = "立即生成";
+            btnIcon.classList.remove('hidden');
+            btnLoader.classList.add('hidden');
+            loadingOverlay.classList.add('hidden');
+
+            if (success) {
+                resultImage.classList.remove('hidden');
+                void resultImage.offsetWidth;
+                resultImage.classList.add('opacity-100');
+            }
+        }
+
+        // --- Logic: Modals ---
+        const donationBtn = document.getElementById('donation-btn');
+        const donationModal = document.getElementById('donation-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const wechatTab = document.getElementById('wechat-tab');
+        const alipayTab = document.getElementById('alipay-tab');
+        const qrCodeImg = document.getElementById('qr-code-img');
+
+        const wechatQRUrl = 'https://raw.githubusercontent.com/kyjl97/kyjl97/main/assets/logo.png';
+        const alipayQRUrl = 'https://raw.githubusercontent.com/kyjl97/kyjl97/main/assets/logo.png';
+
+        if (donationBtn && donationModal) {
+            donationBtn.addEventListener('click', (e) => { e.preventDefault(); donationModal.classList.remove('hidden'); });
+            closeModalBtn.addEventListener('click', () => donationModal.classList.add('hidden'));
+            donationModal.addEventListener('click', (e) => { if (e.target === donationModal) donationModal.classList.add('hidden'); });
+
+            wechatTab.addEventListener('click', () => {
+                qrCodeImg.src = wechatQRUrl;
+                alipayTab.className = "flex-1 p-2 text-sm font-semibold text-gray-400 hover:bg-white/5 transition-colors";
+                wechatTab.className = "flex-1 p-2 text-sm font-semibold border-r border-white/10 bg-yellow-500/10 text-yellow-400 transition-colors";
+            });
+            alipayTab.addEventListener('click', () => {
+                qrCodeImg.src = alipayQRUrl;
+                wechatTab.className = "flex-1 p-2 text-sm font-semibold border-r border-white/10 text-gray-400 hover:bg-white/5 transition-colors";
+                alipayTab.className = "flex-1 p-2 text-sm font-semibold bg-yellow-500/10 text-yellow-400 transition-colors";
+            });
+        }
+
+        const genericModal = document.getElementById('generic-qr-modal');
+        const genericModalTitle = document.getElementById('generic-modal-title');
+        const genericModalQrImg = document.getElementById('generic-modal-qr-img');
+        const genericModalDesc = document.getElementById('generic-modal-desc');
+        const closeGenericModalBtn = document.getElementById('close-generic-modal-btn');
+        const wechatPublicTrigger = document.getElementById('wechat-public-trigger');
+
+        if (genericModal) {
+            const closeQr = () => genericModal.classList.add('hidden');
+            closeGenericModalBtn.addEventListener('click', closeQr);
+            genericModal.addEventListener('click', (e) => { if (e.target === genericModal) closeQr(); });
+        }
+
+        if (wechatPublicTrigger) {
+            wechatPublicTrigger.addEventListener('click', (e) => {
+                e.preventDefault();
+                genericModalTitle.textContent = '微信公众号';
+                genericModalQrImg.src = 'https://raw.githubusercontent.com/kyjl97/kyjl97/main/assets/wechat-qr.png';
+                genericModalDesc.textContent = '扫码关注「得救之道」';
+                genericModal.classList.remove('hidden');
+            });
+        }
+    </script>
+</body>
+</html>
